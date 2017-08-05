@@ -11,18 +11,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+import string
 import jinja2
 import webapp2
-import rot_13
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
 
-#inputText = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+inputText = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+outputText = "NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm"
 
-#rot13Encoder = maketrans()
+rot13Encoder = string.maketrans(inputText, outputText)
 
 encryptedtext = ""
 
@@ -45,8 +45,9 @@ class MainPage(Handler):
 
     def post(self):
         entered_string = self.request.get('entered_string')
-        encryptedtext = encryptText(entered_string)
-        self.render("rot13form.html", textblock = encryptedtext)
+        newString = string.translate("Hello world", rot13Encoder)
+        #encryptedtext = encryptText(entered_string)
+        self.render("rot13form.html", textblock = newString)
 
 
 def encryptText(textToEncrypt):
@@ -57,8 +58,6 @@ def encryptText(textToEncrypt):
             aVal -= 13
         elif aVal > 64 and aVal <= 79 or aVal > 97 and aVal <= 110:
             aVal += 13
-        else:
-            aVal = aVal
 
         new_s += chr(aVal)
     
