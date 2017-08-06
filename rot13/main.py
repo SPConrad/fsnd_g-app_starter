@@ -37,6 +37,7 @@ class Handler(webapp2.RequestHandler):
         return t.render(params)
 
     def render(self, template, **kw):
+        print(kw)
         self.write(self.render_str(template, **kw))
 
 
@@ -47,11 +48,8 @@ class MainPage(Handler):
 
     def post(self):
         entered_string = self.request.get('text')
-        entered_string = cgi.escape(entered_string, quote = True)
         encryptedtext = encryptText(entered_string)
-        print(encryptedtext)
         encryptedtext = cgi.escape(encryptedtext)
-        print(encryptedtext)
         self.render("rot13form.html", textblock = encryptedtext)
 
 
@@ -60,16 +58,16 @@ def encryptText(textToEncrypt):
     for c in textToEncrypt:
         aVal = ord(c)
         new_c = ''
-        if aVal > 79 and aVal < 91 or aVal > 110 and aVal < 123:
+        if aVal > 79 and aVal < 91 or aVal >= 110 and aVal < 123:
             new_c = chr(aVal - 13)
-        elif aVal > 64 and aVal <= 79 or aVal > 97 and aVal <= 110:
+        elif aVal > 64 and aVal <= 79 or aVal >= 97 and aVal < 110:
             new_c = chr(aVal + 13)
         else: 
             new_c = c
             print(new_c)
 
         new_s += new_c
-
+        print (new_s)
 
     
     return new_s
