@@ -31,6 +31,7 @@ encryptedtext = ""
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
+        
     #feel free to steal these for basic tempalte rendering
     def render_str(self, template, **params):
         t = jinja_env.get_template(template)
@@ -43,14 +44,14 @@ class Handler(webapp2.RequestHandler):
 
 class MainPage(Handler): 
     def get(self):
-        textblock = encryptedtext
+        text = encryptedtext
         self.render("rot13form.html")
 
     def post(self):
         entered_string = self.request.get('text')
         encryptedtext = encryptText(entered_string)
         encryptedtext = cgi.escape(encryptedtext)
-        self.render("rot13form.html", textblock = encryptedtext)
+        self.render("rot13form.html", text = encryptedtext)
 
 
 def encryptText(textToEncrypt):
@@ -64,10 +65,8 @@ def encryptText(textToEncrypt):
             new_c = chr(aVal + 13)
         else: 
             new_c = c
-            print(new_c)
 
         new_s += new_c
-        print (new_s)
 
     
     return new_s
