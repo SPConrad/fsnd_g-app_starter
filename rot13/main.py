@@ -19,7 +19,7 @@ import webapp2
 import cgi
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
+jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape=True)
 
 inputText = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 outputText = "NOPQRSTUVWXYZABCDEFGHIJKLMnopqrstuvwxyzabcdefghijklm"
@@ -38,7 +38,6 @@ class Handler(webapp2.RequestHandler):
         return t.render(params)
 
     def render(self, template, **kw):
-        print(kw)
         self.write(self.render_str(template, **kw))
 
 
@@ -50,7 +49,6 @@ class MainPage(Handler):
     def post(self):
         entered_string = self.request.get('text')
         encryptedtext = encryptText(entered_string)
-        encryptedtext = cgi.escape(encryptedtext)
         self.render("rot13form.html", text = encryptedtext)
 
 

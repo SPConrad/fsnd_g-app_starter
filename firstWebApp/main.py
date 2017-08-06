@@ -56,8 +56,8 @@ class MainPage(webapp2.RequestHandler):
         user_year = self.request.get('year')
 
         month = valid_month(user_month)
-        day = valid_day(self.request.get(user_day))
-        year = valid_year(self.request.get(user_year))
+        day = valid_day(user_day)
+        year = valid_year(user_year)
 
         if not (day and month and year):
             self.write_form("Invalid date", easy_escape(user_month), easy_escape(user_day), easy_escape(user_year))
