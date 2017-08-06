@@ -24,7 +24,7 @@ jinja_env.globals.update(vars={})
 
 nameReg = re.compile("^[a-zA-Z0-9_-]{3,20}$")
 passwordReg = re.compile("^.{3,20}$")
-emailReg = re.compile("^[\S]+@[\S]+.[\S]+$")
+emailReg = re.compile("^[\S]+@[\S]+.[\S]+$|^$")
 
 errorLabel = """<label style="color: red">%(error)s</label>"""
 
@@ -39,7 +39,6 @@ class Handler(webapp2.RequestHandler):
         
     #feel free to steal these for basic tempalte rendering
     def render_str(self, template, **params):
-        print (params)
         t = jinja_env.get_template(template)
         return t.render(params)
 
@@ -56,15 +55,9 @@ class MainPage(Handler):
         user_password1 = self.request.get('password1')
         user_password2 = self.request.get('password2')
         user_email = self.request.get('email')
-
         nameError = ""
         passwordError = ""
         emailError = ""
-
-        user_name = ""
-        user_password1 = "spork"
-        user_password2 = "ham"
-        user_email = "x"
 
         name = validate(nameReg, user_name)
         passwordMatch = match(user_password1, user_password2)
@@ -91,7 +84,7 @@ class MainPage(Handler):
                 "emailError": emailError
                 })
         else:
-            self.render("signup.html")
+            self.render("success.html", username = user_name)
 
 def match(str1, str2):
     if str1 == str2:

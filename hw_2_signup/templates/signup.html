@@ -1,14 +1,15 @@
 {% extends "index.html" %}
 
 {% block content %}
+<h1>Signup</h1>
 <form method="post">
-    <label>Username</label><input name="name" style="width: 80px;" text="{{ vars.name }}">{{ vars.nameError }}
+    <label>Username</label><input name="name" style="width: 80px;" value="{{ vars.name }}">{{ vars.nameError }}
     <br>
-    <label>Password</label><input name="password1" style="width: 80px;" text="{{ vars.password1 }}"> {{ vars.passwordError }}
+    <label>Password</label><input name="password1" type="password" style="width: 80px;" value="{{ vars.password1 }}"> {{ vars.passwordError }}
     <br>
-    <label>Verify Password</label><input name="password2" style="width: 80px;" text="{{ vars.password2 }}">
+    <label>Verify Password</label><input name="password2" type="password" style="width: 80px;" value="{{ vars.password2 }}">
     <br>
-    <label>Email (optional)</label><input name="email" style="width: 80px;" text="{{ vars.email }}"> {{ vars.emailError }}
+    <label>Email (optional)</label><input name="email" type="email" style="width: 80px;" value="{{ vars.email }}"> {{ vars.emailError }}
     <br>
     <input type="submit">
 </form>    
