@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 import string
 import jinja2
 import webapp2
+import cgi
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
@@ -41,25 +43,34 @@ class Handler(webapp2.RequestHandler):
 class MainPage(Handler): 
     def get(self):
         textblock = encryptedtext
-        self.render("rot13form.html", )
+        self.render("rot13form.html")
 
     def post(self):
-        entered_string = self.request.get('entered_string')
-        newString = string.translate("Hello world", rot13Encoder)
-        #encryptedtext = encryptText(entered_string)
-        self.render("rot13form.html", textblock = newString)
+        entered_string = self.request.get('text')
+        entered_string = cgi.escape(entered_string, quote = True)
+        encryptedtext = encryptText(entered_string)
+        print(encryptedtext)
+        encryptedtext = cgi.escape(encryptedtext)
+        print(encryptedtext)
+        self.render("rot13form.html", textblock = encryptedtext)
 
 
 def encryptText(textToEncrypt):
     new_s = ""
     for c in textToEncrypt:
         aVal = ord(c)
-        if aVal > 79 and aVal < 91 or aVal > 110:
-            aVal -= 13
+        new_c = ''
+        if aVal > 79 and aVal < 91 or aVal > 110 and aVal < 123:
+            new_c = chr(aVal - 13)
         elif aVal > 64 and aVal <= 79 or aVal > 97 and aVal <= 110:
-            aVal += 13
+            new_c = chr(aVal + 13)
+        else: 
+            new_c = c
+            print(new_c)
 
-        new_s += chr(aVal)
+        new_s += new_c
+
+
     
     return new_s
 
