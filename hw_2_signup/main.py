@@ -84,7 +84,12 @@ class MainPage(Handler):
                 "emailError": emailError
                 })
         else:
-            self.render("success.html", username = user_name)
+            self.redirect("/welcome?username=" + user_name)
+
+class WelcomeHandler(Handler):
+    def get(self):
+        user_name = self.request.get('username')
+        self.render("success.html", username = user_name)
 
 def match(str1, str2):
     if str1 == str2:
@@ -93,6 +98,6 @@ def match(str1, str2):
 def validate(expression, strToVal):
         return expression.match(strToVal)
 
-app = webapp2.WSGIApplication([('/', MainPage)
-                                ],
+app = webapp2.WSGIApplication([('/', MainPage),
+                                ('/welcome', WelcomeHandler)],
                                 debug=True)
