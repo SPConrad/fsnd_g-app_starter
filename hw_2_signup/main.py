@@ -37,7 +37,7 @@ class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
         
-    #feel free to steal these for basic tempalte rendering
+    #feel free to steal these for basic template rendering
     def render_str(self, template, **params):
         t = jinja_env.get_template(template)
         return t.render(params)
@@ -51,9 +51,9 @@ class MainPage(Handler):
         self.render("signup.html")
 
     def post(self):
-        user_name = self.request.get('name')
-        user_password1 = self.request.get('password1')
-        user_password2 = self.request.get('password2')
+        user_name = self.request.get('username')
+        user_password1 = self.request.get('password')
+        user_password2 = self.request.get('verify')
         user_email = self.request.get('email')
         nameError = ""
         passwordError = ""
@@ -69,15 +69,15 @@ class MainPage(Handler):
 
         if not (name and passwordMatch and password and email):
             if not name:
-                nameError = (errorLabel % {"error": {"type": "username"}})
+                nameError = (errorLabel % {"error": (invalidText % {"type" : "username"})})
             if not passwordMatch:
                 passwordError = (errorLabel % {"error": mismatchText})
             elif not password:
-                passwordError = (errorLabel % {"error": {"type": "password"}})
+                passwordError = (errorLabel % {"error": (invalidText % {"type" : "password"})})
             if not email: 
-                emailError = (errorLabel % {"error": {"type": "email"}})
+                emailError = (errorLabel % {"error": (invalidText % {"type" : "email"})})
             self.render("signup.html", vars = {
-                "name": user_name, 
+                "username": user_name, 
                 "nameError": nameError, 
                 "passwordError": passwordError, 
                 "email": user_email, 
