@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Welcome to Sean's Blog</title>
+    </head>
+    <form action="/newpost">
+        <label>Make a new blog post</label>
+        <input type="submit">
+    </form>
+    <body>
+
+        <hr>
+        {% for post in posts %}
+            <div class="post">
+                <div class="post-title">
+                    <h2><a href="/blog/?id={{post.key().id()}}">{{post.title}}</a></h2>
+                </div>
+                <pre class="post-body">{{post.body}}</pre>
+                <div class="metadata">{{post.metadata}}</div>
+            </div>
+        {% endfor %}
+    </body>
+</html>
