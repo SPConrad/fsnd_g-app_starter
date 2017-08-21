@@ -17,13 +17,15 @@ import jinja2
 import webapp2
 import cgi
 import re
-
+import hashlib
+import hmac
+import random
+import string
+from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
 jinja_env.globals.update(vars={})
-
-from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), 
@@ -43,15 +45,24 @@ class Handler(webapp2.RequestHandler):
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
 
-# class Blog(db.Model):
-#     title = db.StringProperty(required = True)
-#     body = db.TextProperty(required = True)
-#     created = db.DateTimeProperty(auto_now_add = True)
-#     last_modified = db.DateTimeProperty(auto_now = True)
+class Blog(db.Model):
+    title = db.StringProperty(required = True)
+    body = db.TextProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    last_modified = db.DateTimeProperty(auto_now = True)
 
-#     def render(self):
-#         self._render_text = self.content.replace('\n', '<br>')
-#         return render_str("blogpost.html", p = self)
+    def render(self):
+        self._render_text = self.content.replace('\n', '<br>')
+        return render_str("blogpost.html", p = self)
+
+class Users(db.Model):
+    username = db.StringProperty(required = True)
+    #"(name + pw + salt), salt"
+    password = db.StringProperty(required = True)
+    email = db.StringProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    last_modified = db.DateTimeProperty(auto_now = True)
+
 
 
 #registration
@@ -94,14 +105,38 @@ class ViewBlogPost(Handler):
         post = Blog.get_by_id(int(self.request.get("id")))
         self.render_blog_post(title=post.title, body=post.body)
 
+class SignUp(Handler):
+    def render_sign_up(self, username="", password="", verify="", email="", error=""):
+        self.render("signup.html", username = username, password = password, verify=verify, email=email, error=error)
+
+    def get(self):
+        self.render_sign_up()
+
+    def post(self):
+        _username = self.request.get("username")
+        _password = self.request.get("password")
+        _verify = self.request.get("verify")
+        _email = self.request.get("email")
+
+        if not _password == _verify:
+            _password = None
+
+        if _username and _password and _email:
+            hashedPW = make_pw_hash(_username, _password)
+            #user = Users(username = _username, password = _password, email = _email)
+            #user.put()
+            #print(user.key().id())
+            self.response.headers.add_header('Set-Cookie', 'userID=%s; Path=/' % str(hashedPW))
+            self.redirect('/')
+#class Login(Hanlder):
+ #   def render_login(self, "username")
+
 class MainPage(Handler):
-    def render_front(self, title="", body="", error=""):
-        
+    def render_front(self, title="", body="", error=""):        
         posts = db.GqlQuery("SELECT * from Blog ORDER BY created DESC")
         for post in posts:
             print post.key().id()
         self.render("home.html", title=title, body=body, error=error, posts=posts)
-
     def get(self):
         self.render_front()
 
@@ -118,6 +153,35 @@ class MainPage(Handler):
             error = "Error: Please enter both a title and a body for the post"
             self.render_front(title, art, error)
 
+
+
+def make_secure_val(s):
+    return "%s|%s" % (s, hash_str(s))
+
+def check_secure_val(h):
+    val = h.split('|')[0]
+    if h == make_secure_val(val):
+        return val
+
+def hash_str(h):
+    return hmac.new("secret", h).hexdigest()
+
+#from udacity video
+def make_salt():
+    return ''.join(random.choice(string.letters) for x in xrange(5))
+
+def make_pw_hash(name, pw, salt = None):
+    if not salt:
+        salt = make_salt()
+    print salt
+    hashed = hashlib.sha256(name + pw + salt).hexdigest()
+    return "%s|%s" % (hashed, salt)
+
+
+
+
+
 app = webapp2.WSGIApplication([('/', MainPage),
                               ('/blog/([0-9]+)', ViewBlogPost),
-                              ('/newpost', NewPost)], debug=True)
+                              ('/newpost', NewPost),
+                              ('/signup', SignUp)], debug=True)
