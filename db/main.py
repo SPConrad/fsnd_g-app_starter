@@ -17,13 +17,10 @@ import jinja2
 import webapp2
 import cgi
 import re
-
-
-template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
-jinja_env.globals.update(vars={})
-
-
+import hashlib
+import hmac
+import random
+import string
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')

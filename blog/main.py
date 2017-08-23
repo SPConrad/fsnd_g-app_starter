@@ -26,7 +26,7 @@ from google.appengine.ext import db
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), 
                                 autoescape = True)
-
+salt = ""
 
 nameReg = re.compile("^[a-zA-Z0-9_-]{3,20}$")
 passwordReg = re.compile("^.{3,20}$")
@@ -104,17 +104,7 @@ class NewPost(Handler):
             error = "Sorry, you're missing the title, body, or both. Please try again"
             self.render_new_post(error)
 
-class ViewBlogPost(Handler):
-    def render_blog_post(self, title="", body="", error=""):
-        self.render("blogpost.html", title=title, body=body, error=error)
-    
-    def get(self):
-        post = Blog.get_by_id(int(self.request.get("id")))
-        self.render_blog_post(title=post.title, body=post.body)
 
-class SignUp(Handler):
-    def get(self):
-        self.render("signup.html")
 
 class SignUp(Handler):
     def render_sign_up(self, username="", password="", verify="", email="", error=""):
@@ -150,14 +140,15 @@ class SignUp(Handler):
                 passwordError = (errorLabel % {"error": {"type": "password"}})
             if not email: 
                 emailError = (errorLabel % {"error": {"type": "email"}})
-        else:
-            
+        else:            
             hashedPW = make_pw_hash(username, password)
             #user = Users(username = username, password = password, email = email)
             #user.put()
             #print(user.key().id())
             self.response.headers.add_header('Set-Cookie', 'userID=%s; Path=/' % str(hashedPW))
-            self.redirect("/welcome?username=" + username)
+            print "hashedPW: %s" % str(hashedPW)
+            print "hello world"
+            self.redirect("/welcome")
 
 
     # def post(self):
@@ -195,17 +186,26 @@ class MainPage(Handler):
         if title and art:
             a = Art(title = title, art = art)
             a.put()
-
             self.redirect('/')
         else:
             error = "Error: Please enter both a title and a body for the post"
             self.render_front(title, art, error)
-
+            
+class ViewBlogPost(Handler):
+    def render_blog_post(self, title="", body="", error=""):
+        self.render("blogpost.html", title=title, body=body, error=error)
+    
+    def get(self):
+        post = Blog.get_by_id(int(self.request.get("id")))
+        self.render_blog_post(title=post.title, body=post.body)
 
 class WelcomeHandler(Handler):
+    def render_welcome_page(self, username=""):
+        self.render("welcome.html",username=username)
+
     def get(self):
         user_name = self.request.get('username')
-        self.render("success.html", username = user_name)
+        self.render_welcome_page(username = user_name)
 
 def make_secure_val(s):
     return "%s|%s" % (s, hash_str(s))
