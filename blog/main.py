@@ -24,12 +24,19 @@ import string
 from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
-jinja_env.globals.update(vars={})
-
-template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), 
                                 autoescape = True)
+
+
+nameReg = re.compile("^[a-zA-Z0-9_-]{3,20}$")
+passwordReg = re.compile("^.{3,20}$")
+emailReg = re.compile("^[\S]+@[\S]+.[\S]+$|^$")
+
+errorLabel = """<label style="color: red">%(error)s</label>"""
+
+invalidText = "That's not a valid %(type)s"
+
+mismatchText = "Passwords do not match"
 
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
@@ -106,28 +113,69 @@ class ViewBlogPost(Handler):
         self.render_blog_post(title=post.title, body=post.body)
 
 class SignUp(Handler):
+    def get(self):
+        self.render("signup.html")
+
+class SignUp(Handler):
     def render_sign_up(self, username="", password="", verify="", email="", error=""):
         self.render("signup.html", username = username, password = password, verify=verify, email=email, error=error)
 
     def get(self):
         self.render_sign_up()
 
+
     def post(self):
-        _username = self.request.get("username")
-        _password = self.request.get("password")
-        _verify = self.request.get("verify")
-        _email = self.request.get("email")
+        username = self.request.get('name')
+        password = self.request.get('password')
+        verify = self.request.get('verify')
+        user_email = self.request.get('email')
+        nameError = ""
+        passwordError = ""
+        emailError = ""
 
-        if not _password == _verify:
-            _password = None
+        name = validate(nameReg, username)
+        passwordMatch = match(password, verify)
+        if passwordMatch:
+            passwordValid = validate(passwordReg, password)
+        else:
+            password = False
+        email = validate(emailReg, user_email)
 
-        if _username and _password and _email:
-            hashedPW = make_pw_hash(_username, _password)
-            #user = Users(username = _username, password = _password, email = _email)
+        if not (name and passwordMatch and passwordValid and email):
+            if not name:
+                nameError = (errorLabel % {"error": {"type": "username"}})
+            if not passwordMatch:
+                passwordError = (errorLabel % {"error": mismatchText})
+            elif not passwordValid:
+                passwordError = (errorLabel % {"error": {"type": "password"}})
+            if not email: 
+                emailError = (errorLabel % {"error": {"type": "email"}})
+        else:
+            
+            hashedPW = make_pw_hash(username, password)
+            #user = Users(username = username, password = password, email = email)
             #user.put()
             #print(user.key().id())
             self.response.headers.add_header('Set-Cookie', 'userID=%s; Path=/' % str(hashedPW))
-            self.redirect('/')
+            self.redirect("/welcome?username=" + username)
+
+
+    # def post(self):
+    #     _username = self.request.get("username")
+    #     _password = self.request.get("password")
+    #     _verify = self.request.get("verify")
+    #     _email = self.request.get("email")
+
+    #     if not _password == _verify:
+    #         _password = None
+
+    #     if _username and _password and _email:
+    #         hashedPW = make_pw_hash(_username, _password)
+    #         #user = Users(username = _username, password = _password, email = _email)
+    #         #user.put()
+    #         #print(user.key().id())
+    #         self.response.headers.add_header('Set-Cookie', 'userID=%s; Path=/' % str(hashedPW))
+    #         self.redirect('/')
 #class Login(Hanlder):
  #   def render_login(self, "username")
 
@@ -154,6 +202,10 @@ class MainPage(Handler):
             self.render_front(title, art, error)
 
 
+class WelcomeHandler(Handler):
+    def get(self):
+        user_name = self.request.get('username')
+        self.render("success.html", username = user_name)
 
 def make_secure_val(s):
     return "%s|%s" % (s, hash_str(s))
@@ -179,9 +231,16 @@ def make_pw_hash(name, pw, salt = None):
 
 
 
+def match(str1, str2):
+    if str1 == str2:
+        return True
+
+def validate(expression, strToVal):
+        return expression.match(strToVal)
 
 
 app = webapp2.WSGIApplication([('/', MainPage),
                               ('/blog/([0-9]+)', ViewBlogPost),
                               ('/newpost', NewPost),
-                              ('/signup', SignUp)], debug=True)
+                              ('/signup', SignUp),
+                              ('/welcome', WelcomeHandler)], debug=True)

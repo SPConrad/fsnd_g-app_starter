@@ -1,16 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-	<title>Register New Account</title>
-</head>
-<body>
-    <form method="post">
-        <input type="text" name="username" value="{{username}}">
-        <input type="password" name="password" value="{{password}}">
-        <input type="password" name="verify" value="{{verify}}">
-        <input type="email" name="email" value="{{email}}">
-        <div class="error">{{error}}</div>
-        <input type="submit">
-    </form>
-</body>
-</html>
+{% extends "index.html" %}
+
+{% block content %}
+<h1>Signup</h1>
+<form method="post">
+    <label>Username</label><input name="name" style="width: 80px;" value="{{ name }}">{{ nameError }}
+    <br>
+    <label>Password</label><input name="password" type="password" style="width: 80px;" value="{{ password }}"> {{ passwordError }}
+    <br>
+    <label>Verify Password</label><input name="verify" type="password" style="width: 80px;" value="{{ verify }}">
+    <br>
+    <label>Email (optional)</label><input name="email" type="email" style="width: 80px;" value="{{ email }}"> {{ emailError }}
+    <br>
+    <input type="submit">
+</form>    
+{% endblock %}
