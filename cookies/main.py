@@ -26,6 +26,8 @@ from google.appengine.ext import db
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir))
 
+salt = ""
+
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -46,7 +48,6 @@ class MainPage(Handler):
             cookie_val = check_secure_val(visit_cookie_str)
             if cookie_val:
                 visits = (int(cookie_val))
-                print visits
 
         #make sure visits is an int
         # if visits.isdigit():
@@ -55,36 +56,50 @@ class MainPage(Handler):
         #     visits = 0
         visits += 1
 
+        #new_cookie = "%s|%s" % (user_id, hash(username + pw))
 
+        #get the cookie with the ID of user_id
+        user_cookie_str = self.request.cookies.get('user_id')
+        #if it exists
+        if user_cookie_str:
+            #check that it is valid
+            user_cookie = check_secure_val(user_cookie_str)
+            #if it is, redirect to welcome page
+            if user_cookie:
+                user = user_cookie
+
+        
         # have to convert visits to a string before sending
         new_cookie_val = make_secure_val(str(visits))
-        print new_cookie_val
 
-        self.response.headers.add_header('Set-Cookie', 'visits=%s' % new_cookie_val)
+        self.response.headers.add_header('Set-Cookie', 'user_id=%s' % new_cookie_val)
 
         if visits > 10000:
             self.write("You are amazing!")
         else:
             self.write("You've been here %s times" % visits)
 
+def make_salt():
+    return ''.join(random.choice(string.letters) for x in xrange(5))
+
+def make_pw_hash(name, pw, salt=None):
+    if not salt:
+        salt = make_salt()
+    print(salt)
+    hashed = hashlib.sha256(name + pw + salt).hexdigest()
+    return "%s,%s" % (hashed, salt)
 
 def check_secure_val(h):
-    print "check_secure_val"
-    print h
     val = h.split('|')[0]
     if h == make_secure_val(val):
         return val
 
 
 def make_secure_val(s):
-    print "make secure val"
-    print s
     return "%s|%s" % (s, hash_str(s))
 
 #md5 is not secure, but worked fine for testing purposes
 def hash_str(s):
-    print "hash_str"
-    print s
     return hashlib.md5(s).hexdigest()
 
 secret = "secretValForHashing"

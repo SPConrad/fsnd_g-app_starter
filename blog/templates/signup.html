@@ -3,13 +3,13 @@
 {% block content %}
 <h1>Signup</h1>
 <form method="post">
-    <label>Username</label><input name="name" style="width: 80px;" value="{{ name }}">{{ nameError }}
+    <label>Username</label><input name="name" style="width: 80px;" value="{{ name }}">{{ error_username }}
     <br>
-    <label>Password</label><input name="password" type="password" style="width: 80px;" value="{{ password }}"> {{ passwordError }}
+    <label>Password</label><input name="password" type="password" style="width: 80px;" value="{{ password }}"> {{ error_password }}
     <br>
-    <label>Verify Password</label><input name="verify" type="password" style="width: 80px;" value="{{ verify }}">
+    <label>Verify Password</label><input name="verify" type="password" style="width: 80px;" value="{{ verify }}"> 
     <br>
-    <label>Email (optional)</label><input name="email" type="email" style="width: 80px;" value="{{ email }}"> {{ emailError }}
+    <label>Email (optional)</label><input name="email" type="email" style="width: 80px;" value="{{ email }}"> {{ error_email }}
     <br>
     <input type="submit">
 </form>    

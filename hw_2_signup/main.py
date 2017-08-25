@@ -51,20 +51,20 @@ class MainPage(Handler):
         self.render("signup.html")
 
     def post(self):
-        user_name = self.request.get('username')
-        user_password1 = self.request.get('password')
-        user_password2 = self.request.get('verify')
+        username = self.request.get('username')
+        password = self.request.get('password')
+        verify = self.request.get('verify')
         user_email = self.request.get('email')
         nameError = ""
         passwordError = ""
         emailError = ""
 
-        name = validate(nameReg, user_name)
-        passwordMatch = match(user_password1, user_password2)
+        name = validate(nameReg, username)
+        passwordMatch = match(password, verify)
         if passwordMatch:
-            password = validate(passwordReg, user_password1)
+            password_valid = validate(passwordReg, password)
         else:
-            password = False
+            password_valid = False
         email = validate(emailReg, user_email)
 
         if not (name and passwordMatch and password and email):
@@ -77,19 +77,41 @@ class MainPage(Handler):
             if not email: 
                 emailError = (errorLabel % {"error": (invalidText % {"type" : "email"})})
             self.render("signup.html", vars = {
-                "username": user_name, 
+                "username": username, 
                 "nameError": nameError, 
                 "passwordError": passwordError, 
                 "email": user_email, 
                 "emailError": emailError
                 })
         else:
-            self.redirect("/welcome?username=" + user_name)
+            #set the cookie
+            #hash = hashed(username + pw)
+            #cookie = user_id_number|hash
+
+            #hash_val = make_secure_val("%s + %s" % (name, password))
+            #self.response.headers.add_header('Set-Cookie', 'user_id=%s' % user_id_cookie)
+            #self.redirect("/welcome")
 
 class WelcomeHandler(Handler):
     def get(self):
+        #look for the cookie
         user_name = self.request.get('username')
         self.render("success.html", username = user_name)
+
+def check_secure_val(h):
+    val = h.split('|')[0]
+    if h == make_secure_val(val):
+        return val
+
+
+def make_secure_val(s):
+    return "%s|%s" % (s, hash_str(s))
+
+#md5 is not secure, but worked fine for testing purposes
+def hash_str(s):
+    return hashlib.md5(s).hexdigest()
+
+secret = "secretValForHashing"
 
 def match(str1, str2):
     if str1 == str2:

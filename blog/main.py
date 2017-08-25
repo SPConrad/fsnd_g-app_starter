@@ -26,7 +26,7 @@ from google.appengine.ext import db
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), 
                                 autoescape = True)
-salt = ""
+secret = "scruffy believes in this company"
 
 nameReg = re.compile("^[a-zA-Z0-9_-]{3,20}$")
 passwordReg = re.compile("^.{3,20}$")
@@ -41,7 +41,7 @@ mismatchText = "Passwords do not match"
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
 
-class Handler(webapp2.RequestHandler):
+class BlogHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
     
@@ -51,6 +51,29 @@ class Handler(webapp2.RequestHandler):
 
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
+
+    def set_secure_cookie(self, name, val):
+        #hash the cookie val. This is just the cookie
+        cookie_val = make_secure_val(val)
+        #Path=/ means it is valid for every page on the domain
+        self.response.headers.add(
+            'Set-Cookie',
+            '%s=%s; Path=/' % (name, cookie_val)
+        )
+
+    def read_secure_cookie(self, name):
+        cookie_val = self.request.cookies.get(name)
+        return cookie_val and check_secure_val(cookie_val)
+
+
+    def initialize(self, *a, **kw):
+        webapp2.RequestHandler.initialize(self, *a, **kw)
+        uid = self.read_secure_cookie('user_id')
+        self.user = uid and User.by_id(uid)
+
+def render_post(response, post):
+    response.out.write('<b>' + post.subject + '</b><br>')
+    response.out.write(post.content)
 
 class Blog(db.Model):
     title = db.StringProperty(required = True)
@@ -63,10 +86,33 @@ class Blog(db.Model):
         return render_str("blogpost.html", p = self)
 
 class Users(db.Model):
-    username = db.StringProperty(required = True)
+    name = db.StringProperty(required = True)
     #"(name + pw + salt), salt"
-    password = db.StringProperty(required = True)
-    email = db.StringProperty(required = True)
+    pw_hash = db.StringProperty(required = True)
+    email = db.StringProperty()
+
+    #this is a 'decorator', says you can call this method, on this object
+    #normally the first parameter on a method on a class is "self", references that instance.
+    #in this case we call it "cls" or "class", which means to the class user, not 
+    #a specific instance of a user. 
+    @classmethod
+    def by_id(cls, uid):
+        return User.get_by_id
+
+    @classmethod
+    def by_name(cls, name):
+        #aka "SELECT * from USER where NAME = %s"
+        u = User.all().filter('name =', name).get()
+        return u
+
+    @classmethod
+    def register(cls, name, pw, email = None):
+        pw_hash = make_pw_hash(name, pw)
+        return User(parent = users_key(),
+                    name = name,
+                    pw_hash = pw_hash,
+                    email = email)
+
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
 
@@ -106,69 +152,102 @@ class NewPost(Handler):
 
 
 
-class SignUp(Handler):
-    def render_sign_up(self, username="", password="", verify="", email="", error=""):
-        self.render("signup.html", username = username, password = password, verify=verify, email=email, error=error)
+# class SignUp(Handler):
+#     def render_sign_up(self, username="", password="", verify="", email="", error=""):
+#         self.render("signup.html", username = username, password = password, verify=verify, email=email, error=error)
 
+#     def get(self):
+#         self.render_sign_up()
+
+
+#     def post(self):
+#         username = self.request.get('name')
+#         password = self.request.get('password')
+#         verify = self.request.get('verify')
+#         user_email = self.request.get('email')
+#         nameError = ""
+#         passwordError = ""
+#         emailError = ""
+
+#         name = validate(nameReg, username)
+#         passwordMatch = match(password, verify)
+#         if passwordMatch:
+#             passwordValid = validate(passwordReg, password)
+#         else:
+#             password = False
+#         email = validate(emailReg, user_email)
+
+#         if not (name and passwordMatch and passwordValid and email):
+#             if not name:
+#                 nameError = (errorLabel % {"error": {"type": "username"}})
+#             if not passwordMatch:
+#                 passwordError = (errorLabel % {"error": mismatchText})
+#             elif not passwordValid:
+#                 passwordError = (errorLabel % {"error": {"type": "password"}})
+#             if not email: 
+#                 emailError = (errorLabel % {"error": {"type": "email"}})
+#         else:           
+#             hashedPW = make_pw_hash(username, password)
+#             user = Users(username = username, password = password, email = email)
+#             user.put()
+#             print(user.key().id())
+#             new_cookie_val = make_secure_val(username)
+#             self.response.headers.add_header('Set-Cookie', 'userID=%s; Path=/' % str(hashedPW))
+#             print "hashedPW: %s" % str(hashedPW)
+#             print "hello world"
+#             self.redirect("/welcome")
+
+class Signup(BlogHandler):
     def get(self):
-        self.render_sign_up()
-
+        self.render("signup-form.html")
 
     def post(self):
-        username = self.request.get('name')
-        password = self.request.get('password')
-        verify = self.request.get('verify')
-        user_email = self.request.get('email')
-        nameError = ""
-        passwordError = ""
-        emailError = ""
+        have_error = False
+        self.username = self.request.get('username')
+        self.password = self.request.get('password')
+        self.verify = self.request.get('verify')
+        self.email = self.request.get('email')
 
-        name = validate(nameReg, username)
-        passwordMatch = match(password, verify)
-        if passwordMatch:
-            passwordValid = validate(passwordReg, password)
+        params = dict(username = self.username,
+                      email = self.email)
+
+        if not valid_username(self.username):
+            params['error_username'] = "That's not a valid username."
+            have_error = True
+
+        if not valid_password(self.password):
+            params['error_password'] = "That wasn't a valid password."
+            have_error = True
+        elif self.password != self.verify:
+            params['error_verify'] = "Your passwords didn't match."
+            have_error = True
+
+        if not valid_email(self.email):
+            params['error_email'] = "That's not a valid email."
+            have_error = True
+
+        if have_error:
+            self.render('signup-form.html', **params)
         else:
-            password = False
-        email = validate(emailReg, user_email)
+            self.done()
 
-        if not (name and passwordMatch and passwordValid and email):
-            if not name:
-                nameError = (errorLabel % {"error": {"type": "username"}})
-            if not passwordMatch:
-                passwordError = (errorLabel % {"error": mismatchText})
-            elif not passwordValid:
-                passwordError = (errorLabel % {"error": {"type": "password"}})
-            if not email: 
-                emailError = (errorLabel % {"error": {"type": "email"}})
-        else:            
-            hashedPW = make_pw_hash(username, password)
-            #user = Users(username = username, password = password, email = email)
-            #user.put()
-            #print(user.key().id())
-            self.response.headers.add_header('Set-Cookie', 'userID=%s; Path=/' % str(hashedPW))
-            print "hashedPW: %s" % str(hashedPW)
-            print "hello world"
-            self.redirect("/welcome")
+    def done(self, *a, **kw):
+        raise NotImplementedError
 
+class Register(Signup):
+    def done(self):
+        #check to see if user already exists
+        u = User.by_name(self.username)
+        if u:
+            msg = 'User with that name already exists'
+            self.render('signup.html', error_username = msg)
+        else: 
+            u = User.register(self.username, self.password, self.email)
+            u.put()
 
-    # def post(self):
-    #     _username = self.request.get("username")
-    #     _password = self.request.get("password")
-    #     _verify = self.request.get("verify")
-    #     _email = self.request.get("email")
-
-    #     if not _password == _verify:
-    #         _password = None
-
-    #     if _username and _password and _email:
-    #         hashedPW = make_pw_hash(_username, _password)
-    #         #user = Users(username = _username, password = _password, email = _email)
-    #         #user.put()
-    #         #print(user.key().id())
-    #         self.response.headers.add_header('Set-Cookie', 'userID=%s; Path=/' % str(hashedPW))
-    #         self.redirect('/')
-#class Login(Hanlder):
- #   def render_login(self, "username")
+            #self.login(u)
+            self.set_secure_cookie('user_id', str(user.key().id()))
+            self.redirect('/welcome')
 
 class MainPage(Handler):
     def render_front(self, title="", body="", error=""):        
@@ -204,16 +283,40 @@ class WelcomeHandler(Handler):
         self.render("welcome.html",username=username)
 
     def get(self):
+        #read the cookie
+        user_cookie_str = self.request.cookies.get('user_id')
+        #open DB
+        user_id = user_cookie_str.split('|')[0]
+        hashed_val = user_cookie_str.split('|')[1]
+        #find user with that username
+        user = db.GqlQuery("SELECT * from USERS WHERE USER_ID = %s" %user_id)        
+        #use checkval against the hashed PW, get salt from hashed PW
+        #----not yet----
+        #hashed_pw = user.hashed_password.split('|')[0]
+        #salt = user.hashed_password.split('|')[1]
+        #if check_secure_val("%s + %s + %s" % (user.username + ))
+        #if valid, welcome user
+
+
         user_name = self.request.get('username')
         self.render_welcome_page(username = user_name)
 
-def make_secure_val(s):
-    return "%s|%s" % (s, hash_str(s))
 
-def check_secure_val(h):
-    val = h.split('|')[0]
-    if h == make_secure_val(val):
+
+def users_key(group = 'default'):
+    return db.Key.from_path('users', group)
+
+def make_secure_val(val):
+    return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
+
+def check_secure_val(secure_val):
+    val = secure_val.split('|')[0]
+    if secure_val == make_secure_val(val):
         return val
+
+def validate_pw(name, password, h):
+    salt = h.split('|')[0]
+    return h == make_pw_hash(name, password, salt)
 
 def hash_str(h):
     return hmac.new("secret", h).hexdigest()
@@ -222,10 +325,9 @@ def hash_str(h):
 def make_salt():
     return ''.join(random.choice(string.letters) for x in xrange(5))
 
-def make_pw_hash(name, pw, salt = None):
+def make_pw_hash(name, pw):
     if not salt:
         salt = make_salt()
-    print salt
     hashed = hashlib.sha256(name + pw + salt).hexdigest()
     return "%s|%s" % (hashed, salt)
 
@@ -242,5 +344,5 @@ def validate(expression, strToVal):
 app = webapp2.WSGIApplication([('/', MainPage),
                               ('/blog/([0-9]+)', ViewBlogPost),
                               ('/newpost', NewPost),
-                              ('/signup', SignUp),
+                              ('/signup', Register),
                               ('/welcome', WelcomeHandler)], debug=True)
