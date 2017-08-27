@@ -30,6 +30,7 @@ def check_secure_val(secure_val):
 
 class BlogHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
+        print "write BlogHandler"
         self.response.out.write(*a, **kw)
 
     def render_str(self, template, **params):
@@ -61,8 +62,13 @@ class BlogHandler(webapp2.RequestHandler):
         self.user = uid and User.by_id(int(uid))
 
 def render_post(response, post):
+    print "render_post"
     response.out.write('<b>' + post.subject + '</b><br>')
     response.out.write(post.content)
+
+#class BlogPost(BlogHandler):
+#    def get(self):
+
 
 class MainPage(BlogHandler):
   def get(self):
@@ -128,6 +134,10 @@ class Post(db.Model):
     likedby = db.ListProperty(int)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
+    
+    @classmethod
+    def by_id(cls, uid):
+        return Post.get_by_id(uid, parent = users_key())
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
@@ -135,8 +145,27 @@ class Post(db.Model):
 
 class BlogFront(BlogHandler):
     def get(self):
+        print "get BlogFront"
         posts = greetings = Post.all().order('-created')
         self.render('front.html', posts = posts)
+
+    def post(self):
+        print "in blogfront"
+        #get item from db
+        print self.request.get("p")
+        print self.request.get("p").id
+        post = Post.by_id(self.request.get("p").id)
+        #post = Post.by_id(self.request.get(""))
+        #check if user is author
+        #check to see if user has liked already
+        #if so, un-like
+
+class Like(BlogHandler):
+    def get(self):
+        self.redirect('/')
+
+    def post(self):
+        print self.get.request("post_id")
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -146,8 +175,27 @@ class PostPage(BlogHandler):
         if not post:
             self.error(404)
             return
-
+        print "get PostPage"
         self.render("permalink.html", post = post)
+
+    def post(self):
+        print "post postpage"
+        #get item from db
+        #post = Post.by_id(self.request.get(""))
+        #check if user is author
+        #check to see if user has liked already
+        #if so, un-like
+
+    def put(self):
+        print "in postpage"
+        #get item from db
+        print self.request.get("p")
+        print self.request.get("p").id
+        post = Post.by_id(self.request.get("p").id)
+        #post = Post.by_id(self.request.get(""))
+        #check if user is author
+        #check to see if user has liked already
+        #if so, un-like
 
 class NewPost(BlogHandler):
     def get(self):
@@ -172,6 +220,7 @@ class NewPost(BlogHandler):
             self.render("newpost.html", subject=subject, content=content, error=error)
 
     def put(self):
+        print "put NewPost"
         #ostensibly can't get here if not logged in but juuuuuust in case
         if not self.users:
             self.redirect('/')
@@ -288,6 +337,7 @@ class Unit3Welcome(BlogHandler):
             
 app = webapp2.WSGIApplication([
                                ('/?', BlogFront),
+                               ('/post', Like),
                                ('/([0-9]+)', PostPage),
                                ('/newpost', NewPost),
                                ('/signup', Register),

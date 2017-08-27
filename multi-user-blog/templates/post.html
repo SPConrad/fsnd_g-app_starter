@@ -12,8 +12,12 @@
   <div class="post-content">
     {{p._render_text | safe}}
   </div>
-
+  <br>
   <div class="like">
-    {{p.likes}}<form action="like"></form>
+    <form action="post">
+      <input type="hidden" value="{{p.key()}}" name="post_id">
+      {{p.likes}} likes
+      <input type="submit" value="Like this post?">
+    </form>
   </div>
 </div>
