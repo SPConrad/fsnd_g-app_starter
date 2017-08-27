@@ -14,8 +14,8 @@
   </div>
   <br>
   <div class="like">
-    <form action="post">
-      <input type="hidden" value="{{p.key()}}" name="post_id">
+    <form method="post">
+      <input type="hidden" value="{{p.key().id()}}" name="post">
       {{p.likes}} likes
       <input type="submit" value="Like this post?">
     </form>

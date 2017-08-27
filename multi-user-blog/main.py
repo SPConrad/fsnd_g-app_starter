@@ -137,6 +137,8 @@ class Post(db.Model):
     
     @classmethod
     def by_id(cls, uid):
+        print "in Post.by_id"
+        print uid
         return Post.get_by_id(uid, parent = users_key())
 
     def render(self):
@@ -151,17 +153,38 @@ class BlogFront(BlogHandler):
 
     def post(self):
         print "in blogfront"
+        uid = self.read_secure_cookie('user_id')
+        print uid
         #get item from db
-        print self.request.get("p")
-        print self.request.get("p").id
-        post = Post.by_id(self.request.get("p").id)
-        #post = Post.by_id(self.request.get(""))
+        print self.request.get("post")
+        post_id = int(self.request.get("post"))
+        post = Post.by_id(post_id)
+        print post
+        #posts = db.GqlQuery("SELECT * from Post WHERE __key__ = KEY('Post', %s)" % post_key)
+        #SELECT * FROM Model where __key__ = KEY('Model', <numeric_id>)
+        #print "from db %s" % posts
+        # for post in posts:
+        #     print "loop"
+        #     print post.key().id()
+       
         #check if user is author
+        #print posts.author
+        # if uid = post.author:
+        #     print "same author don't do it"
+        # else: 
+        #     print "cool beans let's like this thing"
+        #     #if user has not liked already:
+        #     post.likes += 1
+        #     post.likedby.append(uid)
+            #else:
+            #post.likes -= 1
+            #post.likedby.removeThisPerson
         #check to see if user has liked already
         #if so, un-like
 
 class Like(BlogHandler):
     def get(self):
+        print "hello like"
         self.redirect('/')
 
     def post(self):
@@ -178,24 +201,6 @@ class PostPage(BlogHandler):
         print "get PostPage"
         self.render("permalink.html", post = post)
 
-    def post(self):
-        print "post postpage"
-        #get item from db
-        #post = Post.by_id(self.request.get(""))
-        #check if user is author
-        #check to see if user has liked already
-        #if so, un-like
-
-    def put(self):
-        print "in postpage"
-        #get item from db
-        print self.request.get("p")
-        print self.request.get("p").id
-        post = Post.by_id(self.request.get("p").id)
-        #post = Post.by_id(self.request.get(""))
-        #check if user is author
-        #check to see if user has liked already
-        #if so, un-like
 
 class NewPost(BlogHandler):
     def get(self):
