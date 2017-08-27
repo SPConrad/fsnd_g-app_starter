@@ -137,9 +137,8 @@ class Post(db.Model):
     
     @classmethod
     def by_id(cls, uid):
-        print "in Post.by_id"
         print uid
-        return Post.get_by_id(uid, parent = users_key())
+        return Post.get_by_id(uid, parent = blog_key())
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
@@ -152,30 +151,20 @@ class BlogFront(BlogHandler):
         self.render('front.html', posts = posts)
 
     def post(self):
-        print "in blogfront"
         uid = self.read_secure_cookie('user_id')
-        print uid
-        #get item from db
-        print self.request.get("post")
         post_id = int(self.request.get("post"))
         post = Post.by_id(post_id)
-        print post
-        #posts = db.GqlQuery("SELECT * from Post WHERE __key__ = KEY('Post', %s)" % post_key)
-        #SELECT * FROM Model where __key__ = KEY('Model', <numeric_id>)
-        #print "from db %s" % posts
-        # for post in posts:
-        #     print "loop"
-        #     print post.key().id()
-       
         #check if user is author
         #print posts.author
-        # if uid = post.author:
-        #     print "same author don't do it"
-        # else: 
-        #     print "cool beans let's like this thing"
-        #     #if user has not liked already:
-        #     post.likes += 1
-        #     post.likedby.append(uid)
+        print uid
+        print post.author
+        if uid == post.author:
+            print "same author don't do it"
+        else: 
+            print "cool beans let's like this thing"
+            #if user has not liked already:
+            post.likes += 1
+            post.likedby.append(uid)
             #else:
             #post.likes -= 1
             #post.likedby.removeThisPerson
