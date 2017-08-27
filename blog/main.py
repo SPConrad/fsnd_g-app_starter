@@ -28,9 +28,17 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
                                 autoescape = True)
 secret = "scruffy believes in this company"
 
-nameReg = re.compile("^[a-zA-Z0-9_-]{3,20}$")
-passwordReg = re.compile("^.{3,20}$")
-emailReg = re.compile("^[\S]+@[\S]+.[\S]+$|^$")
+USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+def valid_username(username):
+    return username and USER_RE.match(username)
+
+PASS_RE = re.compile(r"^.{3,20}$")
+def valid_password(password):
+    return password and PASS_RE.match(password)
+
+EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+def valid_email(email):
+    return not email or EMAIL_RE.match(email)
 
 errorLabel = """<label style="color: red">%(error)s</label>"""
 
@@ -69,15 +77,22 @@ class BlogHandler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie('user_id')
-        self.user = uid and User.by_id(uid)
+        #self.user = uid and User.by_id(uid)
 
 def render_post(response, post):
     response.out.write('<b>' + post.subject + '</b><br>')
     response.out.write(post.content)
 
+class Unit3Welcome(BlogHandler):
+    def get(self):
+        if self.user:
+            self.render('welcome.html', username = self.user.name)
+        else:
+            self.redirect('/signup')
+
 class Blog(db.Model):
-    title = db.StringProperty(required = True)
-    body = db.TextProperty(required = True)
+    subject = db.StringProperty(required = True)
+    content = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
 
@@ -85,7 +100,7 @@ class Blog(db.Model):
         self._render_text = self.content.replace('\n', '<br>')
         return render_str("blogpost.html", p = self)
 
-class Users(db.Model):
+class User(db.Model):
     name = db.StringProperty(required = True)
     #"(name + pw + salt), salt"
     pw_hash = db.StringProperty(required = True)
@@ -97,7 +112,9 @@ class Users(db.Model):
     #a specific instance of a user. 
     @classmethod
     def by_id(cls, uid):
-        return User.get_by_id
+        if uid.isdigit():
+            uid = int(uid)
+        return User.get_by_id(uid, parent = users_key())
 
     @classmethod
     def by_name(cls, name):
@@ -113,9 +130,6 @@ class Users(db.Model):
                     pw_hash = pw_hash,
                     email = email)
 
-    created = db.DateTimeProperty(auto_now_add = True)
-    last_modified = db.DateTimeProperty(auto_now = True)
-
 
 
 #registration
@@ -127,7 +141,7 @@ class Users(db.Model):
 #kill cookie
 
 
-class NewPost(Handler):
+class NewPost(BlogHandler):
     def render_new_post(self, error=""):
         self.render("newpost.html", error=error)
 
@@ -240,16 +254,16 @@ class Register(Signup):
         u = User.by_name(self.username)
         if u:
             msg = 'User with that name already exists'
-            self.render('signup.html', error_username = msg)
+            self.render('signup-form.html', error_username = msg)
         else: 
             u = User.register(self.username, self.password, self.email)
             u.put()
 
             #self.login(u)
-            self.set_secure_cookie('user_id', str(user.key().id()))
+            self.set_secure_cookie('user_id', str(u.key().id()))
             self.redirect('/welcome')
 
-class MainPage(Handler):
+class MainPage(BlogHandler):
     def render_front(self, title="", body="", error=""):        
         posts = db.GqlQuery("SELECT * from Blog ORDER BY created DESC")
         for post in posts:
@@ -270,7 +284,7 @@ class MainPage(Handler):
             error = "Error: Please enter both a title and a body for the post"
             self.render_front(title, art, error)
             
-class ViewBlogPost(Handler):
+class ViewBlogPost(BlogHandler):
     def render_blog_post(self, title="", body="", error=""):
         self.render("blogpost.html", title=title, body=body, error=error)
     
@@ -278,27 +292,30 @@ class ViewBlogPost(Handler):
         post = Blog.get_by_id(int(self.request.get("id")))
         self.render_blog_post(title=post.title, body=post.body)
 
-class WelcomeHandler(Handler):
+class WelcomeHandler(BlogHandler):
     def render_welcome_page(self, username=""):
+        print "username: %s" % username
         self.render("welcome.html",username=username)
 
     def get(self):
         #read the cookie
         user_cookie_str = self.request.cookies.get('user_id')
+        print "user_cookie_str: %s" % user_cookie_str
         #open DB
         user_id = user_cookie_str.split('|')[0]
+        print "user_id: %s" % user_id
         hashed_val = user_cookie_str.split('|')[1]
+        print "hashed_val: %s" % hashed_val
         #find user with that username
-        user = db.GqlQuery("SELECT * from USERS WHERE USER_ID = %s" %user_id)        
+        user = User.by_id(user_id)    
         #use checkval against the hashed PW, get salt from hashed PW
         #----not yet----
-        #hashed_pw = user.hashed_password.split('|')[0]
-        #salt = user.hashed_password.split('|')[1]
-        #if check_secure_val("%s + %s + %s" % (user.username + ))
+        # hashed_pw = user.pw_hash.split('|')[0]
+        # print hashed_pw
+        # salt = user.pw_hash.split('|')[1]
+        # print salt
+        # if check_secure_val("%s + %s + %s" % (user.username + ))
         #if valid, welcome user
-
-
-        user_name = self.request.get('username')
         self.render_welcome_page(username = user_name)
 
 
@@ -325,7 +342,7 @@ def hash_str(h):
 def make_salt():
     return ''.join(random.choice(string.letters) for x in xrange(5))
 
-def make_pw_hash(name, pw):
+def make_pw_hash(name, pw, salt = None):
     if not salt:
         salt = make_salt()
     hashed = hashlib.sha256(name + pw + salt).hexdigest()
@@ -345,4 +362,4 @@ app = webapp2.WSGIApplication([('/', MainPage),
                               ('/blog/([0-9]+)', ViewBlogPost),
                               ('/newpost', NewPost),
                               ('/signup', Register),
-                              ('/welcome', WelcomeHandler)], debug=True)
+                              ('/welcome', Unit3Welcome)], debug=True)
