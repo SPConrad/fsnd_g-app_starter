@@ -30,7 +30,6 @@ def check_secure_val(secure_val):
 
 class BlogHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
-        print "write BlogHandler"
         self.response.out.write(*a, **kw)
 
     def render_str(self, template, **params):
@@ -62,7 +61,6 @@ class BlogHandler(webapp2.RequestHandler):
         self.user = uid and User.by_id(int(uid))
 
 def render_post(response, post):
-    print "render_post"
     response.out.write('<b>' + post.subject + '</b><br>')
     response.out.write(post.content)
 
@@ -131,13 +129,12 @@ class Post(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     likes = db.IntegerProperty()
-    likedby = db.ListProperty(int)
+    likedby = db.ListProperty(str)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
     
     @classmethod
     def by_id(cls, uid):
-        print uid
         return Post.get_by_id(uid, parent = blog_key())
 
     def render(self):
@@ -146,25 +143,34 @@ class Post(db.Model):
 
 class BlogFront(BlogHandler):
     def get(self):
-        print "get BlogFront"
         posts = greetings = Post.all().order('-created')
         self.render('front.html', posts = posts)
 
     def post(self):
-        uid = self.read_secure_cookie('user_id')
+        uid = int(self.read_secure_cookie('user_id'))
+        user = User.by_id(uid)
+        username = user.name
         post_id = int(self.request.get("post"))
         post = Post.by_id(post_id)
         #check if user is author
         #print posts.author
-        print uid
+        print username
         print post.author
-        if uid == post.author:
+        if username == post.author:
             print "same author don't do it"
         else: 
             print "cool beans let's like this thing"
             #if user has not liked already:
-            post.likes += 1
-            post.likedby.append(uid)
+            if username in post.likedby:
+                print "already here"
+                post.likedby.remove(username)
+                post.likes = post.likes - 1
+            else:
+                print "hasn't liked yet"
+                post.likedby.append(username)
+                post.likes = post.likes + 1
+
+            post.put()
             #else:
             #post.likes -= 1
             #post.likedby.removeThisPerson
@@ -177,7 +183,7 @@ class Like(BlogHandler):
         self.redirect('/')
 
     def post(self):
-        print self.get.request("post_id")
+        print "post like"
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -187,7 +193,6 @@ class PostPage(BlogHandler):
         if not post:
             self.error(404)
             return
-        print "get PostPage"
         self.render("permalink.html", post = post)
 
 
@@ -214,7 +219,6 @@ class NewPost(BlogHandler):
             self.render("newpost.html", subject=subject, content=content, error=error)
 
     def put(self):
-        print "put NewPost"
         #ostensibly can't get here if not logged in but juuuuuust in case
         if not self.users:
             self.redirect('/')
