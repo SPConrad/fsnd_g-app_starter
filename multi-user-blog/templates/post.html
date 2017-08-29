@@ -1,7 +1,9 @@
 <div class="post">
   <div class="post-heading">
     <div class="post-title">
-      {{p.subject}}
+      <a href="/{{p.key().id()}}">
+        {{p.subject}}
+      </a>
     </div>
 
     <div class="post-date">
@@ -14,7 +16,7 @@
   </div>
   <br>
   <div class="like">
-    <form method="post">
+    <form action="/like" method="post">
       <input type="hidden" value="{{p.key().id()}}" name="post">
       {{p.likes}} likes
       <input type="submit" value="Like this post?">

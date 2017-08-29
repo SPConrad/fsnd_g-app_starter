@@ -171,11 +171,7 @@ class BlogFront(BlogHandler):
                 post.likes = post.likes + 1
 
             post.put()
-            #else:
-            #post.likes -= 1
-            #post.likedby.removeThisPerson
-        #check to see if user has liked already
-        #if so, un-like
+            self.redirect('/blog')
 
 class Like(BlogHandler):
     def get(self):
@@ -183,7 +179,31 @@ class Like(BlogHandler):
         self.redirect('/')
 
     def post(self):
-        print "post like"
+        uid = int(self.read_secure_cookie('user_id'))
+        user = User.by_id(uid)
+        username = user.name
+        post_id = int(self.request.get("post"))
+        post = Post.by_id(post_id)
+        #check if user is author
+        #print posts.author
+        print username
+        print post.author
+        if username == post.author:
+            print "same author don't do it"
+        else: 
+            print "cool beans let's like this thing"
+            #if user has not liked already:
+            if username in post.likedby:
+                print "already here"
+                post.likedby.remove(username)
+                post.likes = post.likes - 1
+            else:
+                print "hasn't liked yet"
+                post.likedby.append(username)
+                post.likes = post.likes + 1
+
+            post.put()
+            self.redirect('/blog')
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -335,7 +355,9 @@ class Unit3Welcome(BlogHandler):
             
 app = webapp2.WSGIApplication([
                                ('/?', BlogFront),
-                               ('/post', Like),
+                               ('/blog', BlogFront),
+                               ('/like', Like),
+                               ('/post/([0-9]+)', PostPage),
                                ('/([0-9]+)', PostPage),
                                ('/newpost', NewPost),
                                ('/signup', Register),
